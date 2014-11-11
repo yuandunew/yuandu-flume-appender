@@ -9,6 +9,17 @@
     <name>Logback Flume Appender</name>
 
     <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.2</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <dependencies>
@@ -32,15 +43,16 @@
         </dependency>
 
     </dependencies>
+
     <distributionManagement>
         <repository>
-            <id>deployment</id>
-            <name>Internal Releases</name>
-            <url>https://nexus.gilt.com/nexus/content/repositories/internal-releases/</url>
+            <id>bintray-javierarrieta-maven-logback-flume-appender</id>
+            <name>javierarrieta-maven-logback-flume-appender</name>
+            <url>https://api.bintray.com/maven/javierarrieta/maven/logback-flume-appender</url>
         </repository>
         <snapshotRepository>
             <id>deployment</id>
-            <name>Internal Releases</name>
+            <name>Internal Snapshots</name>
             <url>https://nexus.gilt.com/nexus/content/repositories/gilt.snapshots/</url>
         </snapshotRepository>
     </distributionManagement>

@@ -1,6 +1,5 @@
 package com.git.logback;
 
-import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
@@ -18,7 +17,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
+public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
   protected static final Charset UTF_8 = Charset.forName("UTF-8");
 
@@ -26,9 +25,19 @@ public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
   private RpcClient client;
 
+  private String flumeHostname;
+
+  private int flumePort;
+
+  private String application;
+
   private String hostname;
 
-  private int port;
+  private String type;
+
+  public void setHostname(String hostname) {
+    this.hostname = hostname;
+  }
 
   public String getApplication() {
     return application;
@@ -38,24 +47,22 @@ public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
     this.application = application;
   }
 
-  private String application;
-
   protected Layout<ILoggingEvent> layout;
 
-  public String getHostname() {
-    return hostname;
+  public String getFlumeHostname() {
+    return flumeHostname;
   }
 
-  public void setHostname(String hostname) {
-    this.hostname = hostname;
+  public void setFlumeHostname(String flumeHostname) {
+    this.flumeHostname = flumeHostname;
   }
 
-  public int getPort() {
-    return port;
+  public int getFlumePort() {
+    return flumePort;
   }
 
-  public void setPort(int port) {
-    this.port = port;
+  public void setFlumePort(int flumePort) {
+    this.flumePort = flumePort;
   }
 
   public Layout<ILoggingEvent> getLayout() {
@@ -71,8 +78,11 @@ public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
     if (layout == null) {
       addWarn("Layout was not defined, will only log the message, no stack traces or custom layout");
     }
+    if(StringUtils.isEmpty(application)) {
+      application = resolveApplication();
+    }
 
-    client = RpcClientFactory.getDefaultInstance(hostname, port);
+    client = RpcClientFactory.getDefaultInstance(flumeHostname, flumePort);
 
     super.start();
 
@@ -92,7 +102,7 @@ public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
     String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
     Map<String, String> headers = extractHeaders(eventObject);
 
-    Event event = EventBuilder.withBody(body, UTF_8, headers);
+    Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
     try {
       client.append(event);
     } catch (EventDeliveryException ede) {
@@ -104,17 +114,30 @@ public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
     Map<String, String> headers = new HashMap<String, String>(10);
     headers.put("timestamp", Long.toString(eventObject.getTimeStamp()));
     headers.put("type", eventObject.getLevel().toString());
-    headers.put("source", eventObject.getLoggerName());
+    headers.put("logger", eventObject.getLoggerName());
+    headers.put("message", eventObject.getMessage());
     try {
-      headers.put("host", InetAddress.getLocalHost().getHostName());
+      headers.put("host", resolveHostname());
     } catch (UnknownHostException e) {
       addWarn(e.getMessage());
     }
     headers.put("thread", eventObject.getThreadName());
-    if(StringUtils.isNotEmpty(application)) {
-      headers.put("@application",application);
+    if (StringUtils.isNotEmpty(application)) {
+      headers.put("application", application);
+    }
+
+    if(StringUtils.isNotEmpty(type)) {
+      headers.put("type", type);
     }
 
     return headers;
+  }
+
+  private String resolveHostname() throws UnknownHostException {
+    return hostname != null ? hostname : InetAddress.getLocalHost().getHostName();
+  }
+
+  private String resolveApplication() {
+    return System.getProperty("application.name");
   }
 }
