@@ -14,30 +14,24 @@ import org.apache.flume.event.EventBuilder;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
-  protected static final Charset UTF_8 = Charset.forName("UTF-8");
+  private static final int MAX_RECONNECTS = 3;
+  private static final int MINIMUM_TIMEOUT = 1000;
 
-  private static final String DEFAULT_PATTERN = "%msg%n%ex{full}";
+  protected static final Charset UTF_8 = Charset.forName("UTF-8");
 
   private RpcClient client;
 
-  private String flumeHostname;
-
-  private int flumePort;
+  private String flumeAgents;
 
   private String application;
 
   private String hostname;
 
   private String type;
-
-  public void setHostname(String hostname) {
-    this.hostname = hostname;
-  }
 
   public String getApplication() {
     return application;
@@ -49,28 +43,16 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   protected Layout<ILoggingEvent> layout;
 
-  public String getFlumeHostname() {
-    return flumeHostname;
-  }
-
-  public void setFlumeHostname(String flumeHostname) {
-    this.flumeHostname = flumeHostname;
-  }
-
-  public int getFlumePort() {
-    return flumePort;
-  }
-
-  public void setFlumePort(int flumePort) {
-    this.flumePort = flumePort;
-  }
-
   public Layout<ILoggingEvent> getLayout() {
     return layout;
   }
 
   public void setLayout(Layout<ILoggingEvent> layout) {
     this.layout = layout;
+  }
+
+  public void setFlumeAgents(String flumeAgents) {
+    this.flumeAgents = flumeAgents;
   }
 
   @Override
@@ -82,10 +64,64 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       application = resolveApplication();
     }
 
-    client = RpcClientFactory.getDefaultInstance(flumeHostname, flumePort);
+    client = buildClient();
 
     super.start();
 
+  }
+
+  private RpcClient buildClient() {
+
+    if(StringUtils.isNotEmpty(flumeAgents)) {
+      String[] agentConfigs = flumeAgents.split(",");
+      List<RemoteFlumeAgent> agents = new ArrayList<RemoteFlumeAgent>(agentConfigs.length);
+      int totalAgents = 0;
+      for(String conf: agentConfigs) {
+        RemoteFlumeAgent agent = RemoteFlumeAgent.fromString(conf.trim());
+        if( agent != null ) {
+          agents.add(agent);
+          totalAgents++;
+        } else {
+          addWarn("Cannot build a Flume agent config for '" + conf + "'");
+        }
+      }
+
+      if(totalAgents > 0 ) {
+        Properties props = buildFlumeProperties(agents);
+
+        return RpcClientFactory.getInstance(props);
+      } else {
+        addError("No agents configured: '" + flumeAgents + "'");
+      }
+    } else {
+      addError("flumeAgents property has not been defined");
+    }
+
+    return null;
+  }
+
+  private Properties buildFlumeProperties(List<RemoteFlumeAgent> agents) {
+    Properties props = new Properties();
+
+    props.put("client.type", "default_failover");
+
+    int i=0;
+    for(RemoteFlumeAgent agent: agents) {
+      props.put("hosts.h" + (i++), agent.getHostname() + ':' + agent.getPort());
+    }
+    StringBuffer buffer = new StringBuffer(i * 4);
+    for(int j=0; j<i ; j++) {
+      buffer.append("h").append(j).append(" ");
+    }
+    props.put("hosts", buffer.toString());
+    props.put("max-attempts", Integer.toString(MAX_RECONNECTS * agents.size()));
+
+    props.put("request-timeout", Integer.toString(MINIMUM_TIMEOUT));
+    props.put("connect-timeout", Integer.toString(MINIMUM_TIMEOUT));
+
+    System.out.println(props);
+
+    return props;
   }
 
   @Override
