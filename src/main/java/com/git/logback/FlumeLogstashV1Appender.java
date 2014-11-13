@@ -29,22 +29,22 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   private String application;
 
+  protected Layout<ILoggingEvent> layout;
+
   private String hostname;
 
   private String type;
 
-  public String getApplication() {
-    return application;
+  public void setType(String type) {
+    this.type = type;
+  }
+
+  public void setHostname(String hostname) {
+    this.hostname = hostname;
   }
 
   public void setApplication(String application) {
     this.application = application;
-  }
-
-  protected Layout<ILoggingEvent> layout;
-
-  public Layout<ILoggingEvent> getLayout() {
-    return layout;
   }
 
   public void setLayout(Layout<ILoggingEvent> layout) {
@@ -135,15 +135,19 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   @Override
   protected void append(ILoggingEvent eventObject) {
-    String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
-    Map<String, String> headers = extractHeaders(eventObject);
 
-    Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
-    try {
-      client.append(event);
-    } catch (EventDeliveryException ede) {
-      addError(ede.getMessage(), ede);
+    if(client != null) {
+      String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
+      Map<String, String> headers = extractHeaders(eventObject);
+
+      Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
+      try {
+        client.append(event);
+      } catch (EventDeliveryException ede) {
+        addError(ede.getMessage(), ede);
+      }
     }
+
   }
 
   private Map<String, String> extractHeaders(ILoggingEvent eventObject) {
