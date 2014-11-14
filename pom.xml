@@ -46,9 +46,9 @@
 
     <distributionManagement>
         <repository>
-            <id>bintray-javierarrieta-maven-logback-flume-appender</id>
-            <name>javierarrieta-maven-logback-flume-appender</name>
-            <url>https://api.bintray.com/maven/javierarrieta/maven/logback-flume-appender</url>
+            <id>bintray</id>
+            <name>javierarrieta-maven</name>
+            <url>https://api.bintray.com/maven/javierarrieta/maven/com.gilt.logback/</url>
         </repository>
         <snapshotRepository>
             <id>deployment</id>
