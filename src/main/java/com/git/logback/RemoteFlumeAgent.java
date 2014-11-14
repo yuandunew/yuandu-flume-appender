@@ -1,8 +1,12 @@
 package com.git.logback;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class RemoteFlumeAgent {
+
+  private static final Logger logger = LoggerFactory.getLogger(RemoteFlumeAgent.class);
 
   private final String hostname;
 
@@ -32,13 +36,13 @@ public final class RemoteFlumeAgent {
           int port = Integer.parseInt(portString);
           return new RemoteFlumeAgent(parts[0], port);
         } catch (NumberFormatException nfe) {
-          //TODO Log parsing error
+          logger.error("Not a valid int: " + portString);
         }
       } else {
-        //TODO Log wrong number of segments
+        logger.error("Not a valid [host]:[port] configuration: " + input);
       }
     } else {
-      //TODO Log empty input
+      logger.error("Empty flume agent entry, an extra comma?");
     }
     return null;
   }
