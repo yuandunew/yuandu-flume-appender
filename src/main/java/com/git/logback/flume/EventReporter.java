@@ -1,0 +1,97 @@
+package com.git.logback.flume;
+
+import ch.qos.logback.core.spi.ContextAware;
+import org.apache.flume.Event;
+import org.apache.flume.EventDeliveryException;
+import org.apache.flume.api.RpcClient;
+import org.apache.flume.api.RpcClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class EventReporter {
+
+  private RpcClient client;
+
+  private final ContextAware loggingContext;
+
+  private final ExecutorService es = Executors.newFixedThreadPool(2);
+
+  private final Properties connectionProps;
+
+  public EventReporter(final Properties properties, final ContextAware context) {
+    this.connectionProps = properties;
+    this.loggingContext = context;
+  }
+
+  public void report(final Event[] events) {
+    es.submit(new ReportingJob(events));
+  }
+
+  private synchronized RpcClient createClient() {
+    if (client == null) {
+      loggingContext.addInfo("Creating a new Flume Client with properties: " + connectionProps);
+      try {
+        client = RpcClientFactory.getInstance(connectionProps);
+      } catch ( Exception e ) {
+        loggingContext.addError(e.getLocalizedMessage(), e);
+      }
+    }
+
+    return client;
+  }
+
+  public synchronized void close() {
+    loggingContext.addInfo("Shutting down Flume client");
+    if (client != null) {
+      client.close();
+      client = null;
+    }
+  }
+
+  public void shutdown() {
+    close();
+    es.shutdown();
+  }
+
+  private class ReportingJob implements Runnable {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final int retries = 3;
+
+    private final Event[] events;
+
+    public ReportingJob(final Event[] events) {
+      this.events = events;
+      logger.debug("Created a job containing {} events", events.length);
+    }
+
+
+    @Override
+    public void run() {
+      boolean success = false;
+      int count = 0;
+      while (!success && count < retries) {
+        count++;
+        try {
+          logger.debug("Reporting a batch of {} events, try {}", events.length, count + 1);
+          createClient().appendBatch(Arrays.asList(events));
+          success = true;
+          logger.debug("Successfully reported a batch of {} events", events.length);
+        } catch (EventDeliveryException e) {
+          logger.warn(e.getLocalizedMessage(), e);
+          logger.warn("Will retry " + (retries - count) + " times");
+        }
+      }
+      if (!success) {
+        logger.error("Could not submit events to Flume");
+        close();
+      }
+    }
+  }
+}
