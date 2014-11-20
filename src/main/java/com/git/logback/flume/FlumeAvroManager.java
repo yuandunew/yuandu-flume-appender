@@ -103,7 +103,7 @@ public class FlumeAvroManager {
 
     if(i > 1) {
       props.put("client.type", "default_loadbalance");
-      props.put("host-selector", "random");
+      props.put("host-selector", "round_robin");
     }
 
     props.put("backoff", "true");
