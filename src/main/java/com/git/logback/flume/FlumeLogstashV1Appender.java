@@ -1,29 +1,26 @@
-package com.git.logback;
+package com.git.logback.flume;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flume.Event;
-import org.apache.flume.EventDeliveryException;
 import org.apache.flume.FlumeException;
-import org.apache.flume.api.RpcClient;
-import org.apache.flume.api.RpcClientFactory;
 import org.apache.flume.event.EventBuilder;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
-  private static final int MAX_RECONNECTS = 3;
-  private static final int MINIMUM_TIMEOUT = 1000;
-
   protected static final Charset UTF_8 = Charset.forName("UTF-8");
 
-  private RpcClient client;
+  private FlumeAvroManager flumeManager;
 
   private String flumeAgents;
 
@@ -60,74 +57,36 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
     if (layout == null) {
       addWarn("Layout was not defined, will only log the message, no stack traces or custom layout");
     }
-    if(StringUtils.isEmpty(application)) {
+    if (StringUtils.isEmpty(application)) {
       application = resolveApplication();
     }
 
-    client = buildClient();
-
-    super.start();
-
-  }
-
-  private RpcClient buildClient() {
-
-    if(StringUtils.isNotEmpty(flumeAgents)) {
+    if (StringUtils.isNotEmpty(flumeAgents)) {
       String[] agentConfigs = flumeAgents.split(",");
+
       List<RemoteFlumeAgent> agents = new ArrayList<RemoteFlumeAgent>(agentConfigs.length);
-      int totalAgents = 0;
-      for(String conf: agentConfigs) {
+      for (String conf : agentConfigs) {
         RemoteFlumeAgent agent = RemoteFlumeAgent.fromString(conf.trim());
-        if( agent != null ) {
+        if (agent != null) {
           agents.add(agent);
-          totalAgents++;
         } else {
           addWarn("Cannot build a Flume agent config for '" + conf + "'");
         }
       }
-
-      if(totalAgents > 0 ) {
-        Properties props = buildFlumeProperties(agents);
-
-        return RpcClientFactory.getInstance(props);
-      } else {
-        addError("No agents configured: '" + flumeAgents + "'");
-      }
+      flumeManager = FlumeAvroManager.create(agents, this);
     } else {
-      addError("flumeAgents property has not been defined");
+      addError("Cannot configure a flume agent with an empty configuration");
     }
+    super.start();
 
-    return null;
-  }
-
-  private Properties buildFlumeProperties(List<RemoteFlumeAgent> agents) {
-    Properties props = new Properties();
-
-    props.put("client.type", "default_failover");
-
-    int i=0;
-    for(RemoteFlumeAgent agent: agents) {
-      props.put("hosts.h" + (i++), agent.getHostname() + ':' + agent.getPort());
-    }
-    StringBuffer buffer = new StringBuffer(i * 4);
-    for(int j=0; j<i ; j++) {
-      buffer.append("h").append(j).append(" ");
-    }
-    props.put("hosts", buffer.toString());
-    props.put("max-attempts", Integer.toString(MAX_RECONNECTS * agents.size()));
-
-    props.put("request-timeout", Integer.toString(MINIMUM_TIMEOUT));
-    props.put("connect-timeout", Integer.toString(MINIMUM_TIMEOUT));
-
-    System.out.println(props);
-
-    return props;
   }
 
   @Override
   public void stop() {
     try {
-      client.close();
+      if (flumeManager != null) {
+        flumeManager.stop();
+      }
     } catch (FlumeException fe) {
       addWarn(fe.getMessage(), fe);
     }
@@ -136,15 +95,16 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
   @Override
   protected void append(ILoggingEvent eventObject) {
 
-    if(client != null) {
-      String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
-      Map<String, String> headers = extractHeaders(eventObject);
-
-      Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
+    if (flumeManager != null) {
       try {
-        client.append(event);
-      } catch (EventDeliveryException ede) {
-        addError(ede.getMessage(), ede);
+        String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
+        Map<String, String> headers = extractHeaders(eventObject);
+
+        Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
+
+        flumeManager.send(event);
+      } catch( Exception e) {
+        addError(e.getLocalizedMessage(), e);
       }
     }
 
@@ -156,6 +116,7 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
     headers.put("type", eventObject.getLevel().toString());
     headers.put("logger", eventObject.getLoggerName());
     headers.put("message", eventObject.getMessage());
+    headers.put("level", eventObject.getLevel().toString());
     try {
       headers.put("host", resolveHostname());
     } catch (UnknownHostException e) {
@@ -166,7 +127,7 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       headers.put("application", application);
     }
 
-    if(StringUtils.isNotEmpty(type)) {
+    if (StringUtils.isNotEmpty(type)) {
       headers.put("type", type);
     }
 
