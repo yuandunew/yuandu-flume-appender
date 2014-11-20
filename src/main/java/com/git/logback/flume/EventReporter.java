@@ -76,21 +76,24 @@ public class EventReporter {
     public void run() {
       boolean success = false;
       int count = 0;
-      while (!success && count < retries) {
-        count++;
-        try {
-          logger.debug("Reporting a batch of {} events, try {}", events.length, count + 1);
-          createClient().appendBatch(Arrays.asList(events));
-          success = true;
-          logger.debug("Successfully reported a batch of {} events", events.length);
-        } catch (EventDeliveryException e) {
-          logger.warn(e.getLocalizedMessage(), e);
-          logger.warn("Will retry " + (retries - count) + " times");
+      try {
+        while (!success && count < retries) {
+          count++;
+          try {
+            logger.debug("Reporting a batch of {} events, try {}", events.length, count);
+            createClient().appendBatch(Arrays.asList(events));
+            success = true;
+            logger.debug("Successfully reported a batch of {} events", events.length);
+          } catch (EventDeliveryException e) {
+            logger.warn(e.getLocalizedMessage(), e);
+            logger.warn("Will retry " + (retries - count) + " times");
+          }
         }
-      }
-      if (!success) {
-        logger.error("Could not submit events to Flume");
-        close();
+      } finally {
+        if (!success) {
+          logger.error("Could not submit events to Flume");
+          close();
+        }
       }
     }
   }

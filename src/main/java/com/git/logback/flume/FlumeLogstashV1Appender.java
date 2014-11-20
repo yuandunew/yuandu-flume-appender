@@ -11,7 +11,9 @@ import org.apache.flume.event.EventBuilder;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILoggingEvent> {
@@ -55,12 +57,26 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
     if (layout == null) {
       addWarn("Layout was not defined, will only log the message, no stack traces or custom layout");
     }
-    if(StringUtils.isEmpty(application)) {
+    if (StringUtils.isEmpty(application)) {
       application = resolveApplication();
     }
 
-    flumeManager = FlumeAvroManager.create(flumeAgents, this);
+    if (StringUtils.isNotEmpty(flumeAgents)) {
+      String[] agentConfigs = flumeAgents.split(",");
 
+      List<RemoteFlumeAgent> agents = new ArrayList<RemoteFlumeAgent>(agentConfigs.length);
+      for (String conf : agentConfigs) {
+        RemoteFlumeAgent agent = RemoteFlumeAgent.fromString(conf.trim());
+        if (agent != null) {
+          agents.add(agent);
+        } else {
+          addWarn("Cannot build a Flume agent config for '" + conf + "'");
+        }
+      }
+      flumeManager = FlumeAvroManager.create(agents, this);
+    } else {
+      addError("Cannot configure a flume agent with an empty configuration");
+    }
     super.start();
 
   }
@@ -68,7 +84,9 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
   @Override
   public void stop() {
     try {
-      flumeManager.stop();
+      if (flumeManager != null) {
+        flumeManager.stop();
+      }
     } catch (FlumeException fe) {
       addWarn(fe.getMessage(), fe);
     }
@@ -77,13 +95,17 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
   @Override
   protected void append(ILoggingEvent eventObject) {
 
-    if(flumeManager != null) {
-      String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
-      Map<String, String> headers = extractHeaders(eventObject);
+    if (flumeManager != null) {
+      try {
+        String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
+        Map<String, String> headers = extractHeaders(eventObject);
 
-      Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
+        Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
 
-      flumeManager.send(event);
+        flumeManager.send(event);
+      } catch( Exception e) {
+        addError(e.getLocalizedMessage(), e);
+      }
     }
 
   }
@@ -105,7 +127,7 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       headers.put("application", application);
     }
 
-    if(StringUtils.isNotEmpty(type)) {
+    if (StringUtils.isNotEmpty(type)) {
       headers.put("type", type);
     }
 

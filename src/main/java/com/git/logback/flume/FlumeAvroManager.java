@@ -1,10 +1,8 @@
 package com.git.logback.flume;
 
 import ch.qos.logback.core.spi.ContextAware;
-import org.apache.commons.lang.StringUtils;
 import org.apache.flume.Event;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -30,36 +28,19 @@ public class FlumeAvroManager {
 
   private final EventReporter reporter;
 
-  public static FlumeAvroManager create(String flumeAgents, ContextAware context) {
+  public static FlumeAvroManager create(final List<RemoteFlumeAgent> agents, ContextAware context) {
 
-    if (StringUtils.isNotEmpty(flumeAgents)) {
-      String[] agentConfigs = flumeAgents.split(",");
-      List<RemoteFlumeAgent> agents = new ArrayList<RemoteFlumeAgent>(agentConfigs.length);
-      int totalAgents = 0;
-      for (String conf : agentConfigs) {
-        RemoteFlumeAgent agent = RemoteFlumeAgent.fromString(conf.trim());
-        if (agent != null) {
-          agents.add(agent);
-          totalAgents++;
-        } else {
-          context.addWarn("Cannot build a Flume agent config for '" + conf + "'");
-        }
-      }
-
-      if (totalAgents > 0) {
+      if (agents.size() > 0) {
         Properties props = buildFlumeProperties(agents);
         return new FlumeAvroManager(props, context);
       } else {
-        context.addError("No agents configured: '" + flumeAgents + "'");
+        context.addError("No valid agents configured");
       }
-    } else {
-      context.addError("flumeAgents property has not been defined");
-    }
 
     return null;
   }
 
-  public FlumeAvroManager(Properties props, ContextAware context) {
+  private FlumeAvroManager(final Properties props, ContextAware context) {
     this.loggingContext = context;
     this.reporter = new EventReporter(props, loggingContext);
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
@@ -83,7 +64,6 @@ public class FlumeAvroManager {
 
   private static Properties buildFlumeProperties(List<RemoteFlumeAgent> agents) {
     Properties props = new Properties();
-
 
     int i = 0;
     for (RemoteFlumeAgent agent : agents) {
@@ -117,7 +97,7 @@ public class FlumeAvroManager {
   private class AsyncThread extends Thread {
 
     private final BlockingQueue<Event> queue;
-    private boolean shutdown = false;
+    private volatile boolean shutdown = false;
 
     private AsyncThread(BlockingQueue<Event> queue) {
       this.queue = queue;
