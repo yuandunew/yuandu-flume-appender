@@ -19,7 +19,6 @@ public class FlumeAvroManager {
   private static final int MAX_RECONNECTS = 3;
   private static final int MINIMUM_TIMEOUT = 1000;
 
-  private final Properties connectionProps;
   private final ContextAware loggingContext;
 
   private final static long MAXIMUM_REPORTING_MILIS = 2000;
@@ -61,9 +60,8 @@ public class FlumeAvroManager {
   }
 
   public FlumeAvroManager(Properties props, ContextAware context) {
-    this.connectionProps = props;
     this.loggingContext = context;
-    this.reporter = new EventReporter(connectionProps, loggingContext);
+    this.reporter = new EventReporter(props, loggingContext);
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
     this.asyncThread= new AsyncThread(evQueue);
     loggingContext.addInfo("Created a new flume agent with properties: " + props.toString());
