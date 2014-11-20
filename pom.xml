@@ -62,13 +62,8 @@
     <distributionManagement>
         <repository>
             <id>bintray</id>
-            <name>javierarrieta-maven</name>
-            <url>https://api.bintray.com/maven/javierarrieta/maven/com.gilt.logback/</url>
+            <name>giltgroupe-maven</name>
+            <url>https://api.bintray.com/maven/giltgroupe/maven/com.gilt.logback/</url>
         </repository>
-        <snapshotRepository>
-            <id>deployment</id>
-            <name>Internal Snapshots</name>
-            <url>https://nexus.gilt.com/nexus/content/repositories/gilt.snapshots/</url>
-        </snapshotRepository>
     </distributionManagement>
 </project>
