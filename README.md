@@ -20,6 +20,15 @@ Logback appender to forward log messages to a Flume agent
              flume-es-1c.gilt.com:5000,
              flume-es-1d.gilt.com:5000
          </flumeAgents>
+         <flumeProperties>
+             connect-timeout=4000;
+             request-timeout=8000
+         </flumeProperties>
+         <batchSize>100</batchSize>
+         <reportingWindow>1000</reportingWindow>
+         <additionalProperties>
+             myProp=myValue
+         </additionalProperties>
          <application>smapleapp</application>
          <layout class="ch.qos.logback.classic.PatternLayout">
              <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - \(%file:%line\) - %message%n%ex</pattern>
