@@ -10,8 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 public class EventReporter {
 
@@ -19,13 +18,23 @@ public class EventReporter {
 
   private final ContextAware loggingContext;
 
-  private final ExecutorService es = Executors.newFixedThreadPool(2);
+  private final ExecutorService es;
 
   private final Properties connectionProps;
 
-  public EventReporter(final Properties properties, final ContextAware context) {
+  public EventReporter(final Properties properties, final ContextAware context,
+                       final int maximumThreadPoolSize, final int maxQueueSize) {
+    BlockingQueue<Runnable> blockingQueue = new ArrayBlockingQueue<Runnable>(maxQueueSize);
     this.connectionProps = properties;
     this.loggingContext = context;
+
+    int corePoolSize = 1;
+    TimeUnit threadKeepAliveUnits = TimeUnit.SECONDS;
+    int threadKeepAliveTime = 30;
+    RejectedExecutionHandler handler = new ThreadPoolExecutor.AbortPolicy();
+
+    this.es = new ThreadPoolExecutor(corePoolSize, maximumThreadPoolSize, threadKeepAliveTime,
+            threadKeepAliveUnits, blockingQueue, handler);
   }
 
   public void report(final Event[] events) {

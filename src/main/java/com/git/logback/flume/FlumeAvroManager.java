@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -22,6 +23,8 @@ public class FlumeAvroManager {
   private final static long MAXIMUM_REPORTING_MILIS = 10 * 1000;
   private final static long MINIMUM_REPORTING_MILIS = 100;
   private final static int DEFAULT_BATCH_SIZE = 50;
+  private final static int DEFAULT_REPORTER_MAX_THREADPOOL_SIZE = 20;
+  private final static int DEFAULT_REPORTER_MAX_QUEUE_SIZE = 1000;
 
   private final BlockingQueue<Event> evQueue;
 
@@ -34,12 +37,14 @@ public class FlumeAvroManager {
       final Properties overrides,
       final Integer batchSize,
       final Long reportingWindow,
+      final int reporterMaxThreadPoolSize,
+      final int reporterMaxQueueSize,
       final ContextAware context) {
 
       if (agents.size() > 0) {
         Properties props = buildFlumeProperties(agents);
         props.putAll(overrides);
-        return new FlumeAvroManager(props, reportingWindow, batchSize, context);
+        return new FlumeAvroManager(props, reportingWindow, batchSize, reporterMaxThreadPoolSize, reporterMaxQueueSize, context);
       } else {
         context.addError("No valid agents configured");
       }
@@ -50,9 +55,17 @@ public class FlumeAvroManager {
   private FlumeAvroManager(final Properties props,
                            final Long reportingWindowReq,
                            final Integer batchSizeReq,
+                           final Integer reporterMaxThreadPoolSizeReq,
+                           final Integer reporterMaxQueueSizeReq,
                            final ContextAware context) {
     this.loggingContext = context;
-    this.reporter = new EventReporter(props, loggingContext);
+
+    final int reporterMaxThreadPoolSize = reporterMaxThreadPoolSizeReq == null ?
+            DEFAULT_REPORTER_MAX_THREADPOOL_SIZE : reporterMaxThreadPoolSizeReq;
+    final int reporterMaxQueueSize = reporterMaxQueueSizeReq == null ?
+            DEFAULT_REPORTER_MAX_QUEUE_SIZE : reporterMaxQueueSizeReq;
+
+    this.reporter = new EventReporter(props, loggingContext, reporterMaxThreadPoolSize, reporterMaxQueueSize);
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
     final long reportingWindow = hamonizeReportingWindow(reportingWindowReq);
     final int batchSize = batchSizeReq == null ? DEFAULT_BATCH_SIZE : batchSizeReq;
@@ -163,7 +176,12 @@ public class FlumeAvroManager {
             System.arraycopy(events, 0, batch, 0, count);
           }
           loggingContext.addInfo("Sending " + count + " event(s) to the EventReporter");
-          reporter.report(batch);
+          try{
+            reporter.report(batch);
+          } catch (RejectedExecutionException ex) {
+            loggingContext.addError("Logging events batch rejected by EventReporter. Check reporter connectivity or " +
+                    "consider increasing reporterMaxThreadPoolSize or reporterMaxQueueSize", ex);
+          }
         }
       }
 
