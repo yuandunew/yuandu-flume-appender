@@ -19,8 +19,9 @@ public class FlumeAvroManager {
 
   private final ContextAware loggingContext;
 
-  private final static long MAXIMUM_REPORTING_MILIS = 2000;
-  private final static int BATCH_SIZE = 200;
+  private final static long MAXIMUM_REPORTING_MILIS = 10 * 1000;
+  private final static long MINIMUM_REPORTING_MILIS = 100;
+  private final static int DEFAULT_BATCH_SIZE = 50;
 
   private final BlockingQueue<Event> evQueue;
 
@@ -53,11 +54,24 @@ public class FlumeAvroManager {
     this.loggingContext = context;
     this.reporter = new EventReporter(props, loggingContext);
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
-    final long reportingWindow = reportingWindowReq == null ? MAXIMUM_REPORTING_MILIS : reportingWindowReq;
-    final int batchSize = batchSizeReq == null ? BATCH_SIZE : batchSizeReq;
+    final long reportingWindow = hamonizeReportingWindow(reportingWindowReq);
+    final int batchSize = batchSizeReq == null ? DEFAULT_BATCH_SIZE : batchSizeReq;
     this.asyncThread= new AsyncThread(evQueue, batchSize, reportingWindow);
     loggingContext.addInfo("Created a new flume agent with properties: " + props.toString());
     asyncThread.start();
+  }
+
+  private long hamonizeReportingWindow(Long reportingWindowReq) {
+    if(reportingWindowReq == null )
+      return MAXIMUM_REPORTING_MILIS;
+
+    if(reportingWindowReq > MAXIMUM_REPORTING_MILIS)
+      return MAXIMUM_REPORTING_MILIS;
+
+    if( reportingWindowReq < MINIMUM_REPORTING_MILIS)
+      return MINIMUM_REPORTING_MILIS;
+
+    return reportingWindowReq;
   }
 
   public void stop() {
@@ -125,10 +139,10 @@ public class FlumeAvroManager {
     public void run() {
       while (!shutdown) {
         long maxTime = System.currentTimeMillis() + MAXIMUM_REPORTING_MILIS;
-        final Event[] events = new Event[BATCH_SIZE];
+        final Event[] events = new Event[DEFAULT_BATCH_SIZE];
         int count = 0;
         try {
-          while (count < BATCH_SIZE && System.currentTimeMillis() < maxTime) {
+          while (count < DEFAULT_BATCH_SIZE && System.currentTimeMillis() < maxTime) {
             Event ev = queue.poll(maxTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
             if (ev != null) {
               events[count++] = ev;

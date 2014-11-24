@@ -27,7 +27,7 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   private Integer batchSize;
 
-  private Map<String, String> additionalProperties;
+  private Map<String, String> additionalAvroHeaders;
 
   private String application;
 
@@ -61,8 +61,8 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
     this.flumeProperties = flumeProperties;
   }
 
-  public void setAdditionalProperties(String additionalProperties) {
-    this.additionalProperties = extractProperties(additionalProperties);
+  public void setAdditionalAvroHeaders(String additionalHeaders) {
+    this.additionalAvroHeaders = extractProperties(additionalHeaders);
   }
 
   public void setBatchSize(String batchSizeStr) {
@@ -112,10 +112,10 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   }
 
-  private Map<String, String> extractProperties(String flumeProperties) {
+  private Map<String, String> extractProperties(String propertiesAsString) {
     final Map<String, String> props = new HashMap<String, String>();
-    if (StringUtils.isNotEmpty(flumeProperties)) {
-      final String[] segments = flumeProperties.split(";");
+    if (StringUtils.isNotEmpty(propertiesAsString)) {
+      final String[] segments = propertiesAsString.split(";");
       for (final String segment : segments) {
         final String[] pair = segment.split("=");
         if (pair.length == 2) {
@@ -153,8 +153,8 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       try {
         String body = layout != null ? layout.doLayout(eventObject) : eventObject.getFormattedMessage();
         Map<String, String> headers = new HashMap<String, String>();
-        if(additionalProperties != null) {
-          headers.putAll(additionalProperties);
+        if(additionalAvroHeaders != null) {
+          headers.putAll(additionalAvroHeaders);
         }
         headers.putAll(extractHeaders(eventObject));
 

@@ -26,9 +26,9 @@ Logback appender to forward log messages to a Flume agent
          </flumeProperties>
          <batchSize>100</batchSize>
          <reportingWindow>1000</reportingWindow>
-         <additionalProperties>
-             myProp=myValue
-         </additionalProperties>
+         <additionalAvroHeaders>
+             myHeader=myValue
+         </additionalAvroHeaders>
          <application>smapleapp</application>
          <layout class="ch.qos.logback.classic.PatternLayout">
              <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - \(%file:%line\) - %message%n%ex</pattern>
