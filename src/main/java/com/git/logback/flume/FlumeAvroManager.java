@@ -20,8 +20,8 @@ public class FlumeAvroManager {
 
   private final ContextAware loggingContext;
 
-  private final static long MAXIMUM_REPORTING_MILIS = 10 * 1000;
-  private final static long MINIMUM_REPORTING_MILIS = 100;
+  private final static long MAXIMUM_REPORTING_MILLIS = 10 * 1000;
+  private final static long MINIMUM_REPORTING_MILLIS = 100;
   private final static int DEFAULT_BATCH_SIZE = 50;
   private final static int DEFAULT_REPORTER_MAX_THREADPOOL_SIZE = 20;
   private final static int DEFAULT_REPORTER_MAX_QUEUE_SIZE = 1000;
@@ -76,13 +76,13 @@ public class FlumeAvroManager {
 
   private long hamonizeReportingWindow(Long reportingWindowReq) {
     if(reportingWindowReq == null)
-      return MAXIMUM_REPORTING_MILIS;
+      return MAXIMUM_REPORTING_MILLIS;
 
-    if(reportingWindowReq > MAXIMUM_REPORTING_MILIS)
-      return MAXIMUM_REPORTING_MILIS;
+    if(reportingWindowReq > MAXIMUM_REPORTING_MILLIS)
+      return MAXIMUM_REPORTING_MILLIS;
 
-    if( reportingWindowReq < MINIMUM_REPORTING_MILIS)
-      return MINIMUM_REPORTING_MILIS;
+    if( reportingWindowReq < MINIMUM_REPORTING_MILLIS)
+      return MINIMUM_REPORTING_MILLIS;
 
     return reportingWindowReq;
   }
