@@ -9,6 +9,10 @@ Logback appender to forward log messages to a Flume agent
 * **hostname**: Host name, if unset it will be inferred from the box host name via `InetAddress.getLocalHost().getHostName()`
 * **type**: Type of logging, will be ignored if unset
 * **flumeAgents**: Comma separated list of flume avro agents in format `{hostname}:{port}`
+* **flumeProperties**: Additional properties to create the flume RpcClient in format `{key}={value}` separated by `;`
+* **batchSize**: Set the batch size of events to report, overriding the default of 50
+* **reportingWindow**: Override the maximum time spent trying to fill a batch, between 100ms and 10s
+* **additionalAvroHeaders**: Add additional headers to the events in format `{key}={value}` separated by `;`
 
 **Sample configuration**
 
@@ -20,6 +24,15 @@ Logback appender to forward log messages to a Flume agent
              flume-es-1c.gilt.com:5000,
              flume-es-1d.gilt.com:5000
          </flumeAgents>
+         <flumeProperties>
+             connect-timeout=4000;
+             request-timeout=8000
+         </flumeProperties>
+         <batchSize>100</batchSize>
+         <reportingWindow>1000</reportingWindow>
+         <additionalAvroHeaders>
+             myHeader=myValue
+         </additionalAvroHeaders>
          <application>smapleapp</application>
          <layout class="ch.qos.logback.classic.PatternLayout">
              <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - \(%file:%line\) - %message%n%ex</pattern>

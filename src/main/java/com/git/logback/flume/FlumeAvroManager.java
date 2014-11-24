@@ -19,8 +19,9 @@ public class FlumeAvroManager {
 
   private final ContextAware loggingContext;
 
-  private final static long MAXIMUM_REPORTING_MILIS = 2000;
-  private final static int BATCH_SIZE = 200;
+  private final static long MAXIMUM_REPORTING_MILIS = 10 * 1000;
+  private final static long MINIMUM_REPORTING_MILIS = 100;
+  private final static int DEFAULT_BATCH_SIZE = 50;
 
   private final BlockingQueue<Event> evQueue;
 
@@ -28,11 +29,17 @@ public class FlumeAvroManager {
 
   private final EventReporter reporter;
 
-  public static FlumeAvroManager create(final List<RemoteFlumeAgent> agents, ContextAware context) {
+  public static FlumeAvroManager create(
+      final List<RemoteFlumeAgent> agents,
+      final Properties overrides,
+      final Integer batchSize,
+      final Long reportingWindow,
+      final ContextAware context) {
 
       if (agents.size() > 0) {
         Properties props = buildFlumeProperties(agents);
-        return new FlumeAvroManager(props, context);
+        props.putAll(overrides);
+        return new FlumeAvroManager(props, reportingWindow, batchSize, context);
       } else {
         context.addError("No valid agents configured");
       }
@@ -40,13 +47,31 @@ public class FlumeAvroManager {
     return null;
   }
 
-  private FlumeAvroManager(final Properties props, ContextAware context) {
+  private FlumeAvroManager(final Properties props,
+                           final Long reportingWindowReq,
+                           final Integer batchSizeReq,
+                           final ContextAware context) {
     this.loggingContext = context;
     this.reporter = new EventReporter(props, loggingContext);
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
-    this.asyncThread= new AsyncThread(evQueue);
+    final long reportingWindow = hamonizeReportingWindow(reportingWindowReq);
+    final int batchSize = batchSizeReq == null ? DEFAULT_BATCH_SIZE : batchSizeReq;
+    this.asyncThread = new AsyncThread(evQueue, batchSize, reportingWindow);
     loggingContext.addInfo("Created a new flume agent with properties: " + props.toString());
     asyncThread.start();
+  }
+
+  private long hamonizeReportingWindow(Long reportingWindowReq) {
+    if(reportingWindowReq == null)
+      return MAXIMUM_REPORTING_MILIS;
+
+    if(reportingWindowReq > MAXIMUM_REPORTING_MILIS)
+      return MAXIMUM_REPORTING_MILIS;
+
+    if( reportingWindowReq < MINIMUM_REPORTING_MILIS)
+      return MINIMUM_REPORTING_MILIS;
+
+    return reportingWindowReq;
   }
 
   public void stop() {
@@ -97,10 +122,14 @@ public class FlumeAvroManager {
   private class AsyncThread extends Thread {
 
     private final BlockingQueue<Event> queue;
+    private final long reportingWindow;
+    private final int  batchSize;
     private volatile boolean shutdown = false;
 
-    private AsyncThread(BlockingQueue<Event> queue) {
+    private AsyncThread(final BlockingQueue<Event> queue, final int batchSize, final long reportingWindow) {
       this.queue = queue;
+      this.batchSize = batchSize;
+      this.reportingWindow = reportingWindow;
       setDaemon(true);
       setName("FlumeAvroManager-" + threadSequence.getAndIncrement());
       loggingContext.addInfo("Started a new " + AsyncThread.class.getSimpleName() + " thread");
@@ -110,11 +139,11 @@ public class FlumeAvroManager {
     public void run() {
       while (!shutdown) {
         long lastPoll = System.currentTimeMillis();
-        long maxTime = lastPoll + MAXIMUM_REPORTING_MILIS;
-        final Event[] events = new Event[BATCH_SIZE];
+        long maxTime = lastPoll + reportingWindow;
+        final Event[] events = new Event[batchSize];
         int count = 0;
         try {
-          while (count < BATCH_SIZE && System.currentTimeMillis() < maxTime) {
+          while (count < batchSize && System.currentTimeMillis() < maxTime) {
             lastPoll = Math.max(System.currentTimeMillis(), lastPoll); // Corrects to last seen time if clock
                                                                        // moves backwards
             Event ev = queue.poll(maxTime - lastPoll, TimeUnit.MILLISECONDS);
