@@ -138,12 +138,15 @@ public class FlumeAvroManager {
     @Override
     public void run() {
       while (!shutdown) {
-        long maxTime = System.currentTimeMillis() + MAXIMUM_REPORTING_MILIS;
-        final Event[] events = new Event[DEFAULT_BATCH_SIZE];
+        long lastPoll = System.currentTimeMillis();
+        long maxTime = lastPoll + reportingWindow;
+        final Event[] events = new Event[batchSize];
         int count = 0;
         try {
-          while (count < DEFAULT_BATCH_SIZE && System.currentTimeMillis() < maxTime) {
-            Event ev = queue.poll(maxTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+          while (count < batchSize && System.currentTimeMillis() < maxTime) {
+            lastPoll = Math.max(System.currentTimeMillis(), lastPoll); // Corrects to last seen time if clock
+                                                                       // moves backwards
+            Event ev = queue.poll(maxTime - lastPoll, TimeUnit.MILLISECONDS);
             if (ev != null) {
               events[count++] = ev;
             }
