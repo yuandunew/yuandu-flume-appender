@@ -123,9 +123,11 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
           final String value = pair[1].trim();
           if (StringUtils.isNotEmpty(key) && StringUtils.isNotEmpty(value)) {
             props.put(key, value);
+          } else {
+            addWarn("Empty key or value not accepted: " + segment);
           }
         } else {
-          addWarn("Cannot accept properties where key or value is empty: " + segment);
+          addWarn("Not a valid {key}:{value} format: " + segment);
         }
       }
     } else {

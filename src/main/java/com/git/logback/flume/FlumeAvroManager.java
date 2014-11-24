@@ -56,13 +56,13 @@ public class FlumeAvroManager {
     this.evQueue = new ArrayBlockingQueue<Event>(1000);
     final long reportingWindow = hamonizeReportingWindow(reportingWindowReq);
     final int batchSize = batchSizeReq == null ? DEFAULT_BATCH_SIZE : batchSizeReq;
-    this.asyncThread= new AsyncThread(evQueue, batchSize, reportingWindow);
+    this.asyncThread = new AsyncThread(evQueue, batchSize, reportingWindow);
     loggingContext.addInfo("Created a new flume agent with properties: " + props.toString());
     asyncThread.start();
   }
 
   private long hamonizeReportingWindow(Long reportingWindowReq) {
-    if(reportingWindowReq == null )
+    if(reportingWindowReq == null)
       return MAXIMUM_REPORTING_MILIS;
 
     if(reportingWindowReq > MAXIMUM_REPORTING_MILIS)
