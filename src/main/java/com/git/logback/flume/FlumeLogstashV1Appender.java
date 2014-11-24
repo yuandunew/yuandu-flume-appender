@@ -27,6 +27,10 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   private Integer batchSize;
 
+  private Integer reporterMaxThreadPoolSize;
+
+  private Integer reporterMaxQueueSize;
+
   private Map<String, String> additionalAvroHeaders;
 
   private String application;
@@ -81,6 +85,23 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
     }
   }
 
+
+  public void setReporterMaxThreadPoolSize(String reporterMaxThreadPoolSizeStr) {
+    try {
+      this.reporterMaxThreadPoolSize = Integer.parseInt(reporterMaxThreadPoolSizeStr);
+    } catch (NumberFormatException nfe) {
+      addWarn("Cannot set the reporterMaxThreadPoolSize to " + reporterMaxThreadPoolSizeStr, nfe);
+    }
+  }
+
+  public void setReporterMaxQueueSize(String reporterMaxQueueSizeStr) {
+    try {
+      this.reporterMaxQueueSize = Integer.parseInt(reporterMaxQueueSizeStr);
+    } catch (NumberFormatException nfe) {
+      addWarn("Cannot set the reporterMaxQueueSize to " + reporterMaxQueueSizeStr, nfe);
+    }
+  }
+
   @Override
   public void start() {
     if (layout == null) {
@@ -104,7 +125,8 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       }
       Properties overrides = new Properties();
       overrides.putAll(extractProperties(flumeProperties));
-      flumeManager = FlumeAvroManager.create(agents, overrides, batchSize, reportingWindow, this);
+      flumeManager = FlumeAvroManager.create(agents, overrides,
+              batchSize, reportingWindow, reporterMaxThreadPoolSize, reporterMaxQueueSize, this);
     } else {
       addError("Cannot configure a flume agent with an empty configuration");
     }
