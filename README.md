@@ -13,6 +13,8 @@ Logback appender to forward log messages to a Flume agent
 * **batchSize**: Set the batch size of events to report, overriding the default of 50
 * **reportingWindow**: Override the maximum time spent trying to fill a batch, between 100ms and 10s
 * **additionalAvroHeaders**: Add additional headers to the events in format `{key}={value}` separated by `;`
+* **reporterMaxThreadPoolSize**: Set the maximum number of threads for the reporter to use, overriding the default 20
+* **reporterMaxQueueSize**: Set the maximum number of event batches to keep in memory, overriding the default 1000
 
 **Sample configuration**
 
