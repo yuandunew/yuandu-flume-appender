@@ -23,8 +23,8 @@ public class FlumeAvroManager {
   private final static long MAXIMUM_REPORTING_MILLIS = 10 * 1000;
   private final static long MINIMUM_REPORTING_MILLIS = 100;
   private final static int DEFAULT_BATCH_SIZE = 50;
-  private final static int DEFAULT_REPORTER_MAX_THREADPOOL_SIZE = 20;
-  private final static int DEFAULT_REPORTER_MAX_QUEUE_SIZE = 1000;
+  private final static int DEFAULT_REPORTER_MAX_THREADPOOL_SIZE = 2;
+  private final static int DEFAULT_REPORTER_MAX_QUEUE_SIZE = 50;
 
   private final BlockingQueue<Event> evQueue;
 
