@@ -37,11 +37,11 @@ public class FlumeAvroManager {
       final Properties overrides,
       final Integer batchSize,
       final Long reportingWindow,
-      final int reporterMaxThreadPoolSize,
-      final int reporterMaxQueueSize,
+      final Integer reporterMaxThreadPoolSize,
+      final Integer reporterMaxQueueSize,
       final ContextAware context) {
 
-      if (agents.size() > 0) {
+      if (agents != null && agents.size() > 0) {
         Properties props = buildFlumeProperties(agents);
         props.putAll(overrides);
         return new FlumeAvroManager(props, reportingWindow, batchSize, reporterMaxThreadPoolSize, reporterMaxQueueSize, context);
