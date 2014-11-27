@@ -20,7 +20,7 @@ Logback appender to forward log messages to a Flume agent
 
 ```
 <configuration debug="true">
-     <appender name="flume" class="com.git.logback.flume.FlumeLogstashV1Appender">
+     <appender name="flume" class="com.gilt.logback.flume.FlumeLogstashV1Appender">
          <flumeAgents>
              flume-es-1b.gilt.com:5000,
              flume-es-1c.gilt.com:5000,

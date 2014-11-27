@@ -1,4 +1,4 @@
-package com.git.logback.flume;
+package com.gilt.logback.flume;
 
 import ch.qos.logback.core.spi.ContextAware;
 import org.apache.flume.Event;

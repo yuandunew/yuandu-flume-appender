@@ -1,4 +1,4 @@
-package com.git.logback.flume;
+package com.gilt.logback.flume;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
