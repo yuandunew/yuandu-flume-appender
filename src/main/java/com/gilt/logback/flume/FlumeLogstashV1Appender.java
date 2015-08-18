@@ -141,8 +141,8 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
       for (final String segment : segments) {
         final String[] pair = segment.split("=");
         if (pair.length == 2) {
-          final String key = pair[0].trim();
-          final String value = pair[1].trim();
+          final String key = StringUtils.strip(pair[0]);
+          final String value = StringUtils.strip(pair[1]);
           if (StringUtils.isNotEmpty(key) && StringUtils.isNotEmpty(value)) {
             props.put(key, value);
           } else {
@@ -182,7 +182,7 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
         }
         headers.putAll(extractHeaders(eventObject));
 
-        Event event = EventBuilder.withBody(body.trim(), UTF_8, headers);
+        Event event = EventBuilder.withBody(StringUtils.strip(body), UTF_8, headers);
 
         flumeManager.send(event);
       } catch (Exception e) {
