@@ -1,4 +1,4 @@
-package com.gilt.logback.flume;
+package com.yuand.flume.logback;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
@@ -13,7 +13,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.*;
 
-public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILoggingEvent> {
+public class FlumeAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
   protected static final Charset UTF_8 = Charset.forName("UTF-8");
 
@@ -222,5 +222,8 @@ public class FlumeLogstashV1Appender extends UnsynchronizedAppenderBase<ILogging
 
   private String resolveApplication() {
     return System.getProperty("application.name");
+  }
+
+  public FlumeAppender() {
   }
 }

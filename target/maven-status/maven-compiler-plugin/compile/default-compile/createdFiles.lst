@@ -1,0 +1,7 @@
+com/yuand/flume/logback/FlumeAvroManager.class
+com/yuand/flume/logback/EventReporter.class
+com/yuand/flume/logback/RemoteFlumeAgent.class
+com/yuand/flume/logback/EventReporter$ReportingJob.class
+com/yuand/flume/logback/FlumeAvroManager$AsyncThread.class
+com/yuand/flume/logback/FlumeAppender.class
+com/yuand/flume/logback/FlumeAvroManager$1.class
